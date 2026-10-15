@@ -2,6 +2,8 @@
 
 [English](README.md) · **繁體中文**
 
+**線上展示：** https://malilion.github.io/my-bear-jelly/
+
 ![一桌半透明的軟糖小熊](docs/screenshots/hero.png)
 
 ## 簡介
@@ -130,3 +132,7 @@ my-bear-jelly/
 ├── README.md             # English
 └── README.zh-TW.md       # 繁體中文
 ```
+
+## 授權
+
+MIT © 2026 Malilion，詳見 [LICENSE](LICENSE)。

@@ -2,6 +2,8 @@
 
 **English** · [繁體中文](README.zh-TW.md)
 
+**Live demo:** https://malilion.github.io/my-bear-jelly/
+
 ![A table of translucent gummy bears](docs/screenshots/hero.png)
 
 ## Introduction
@@ -130,3 +132,7 @@ my-bear-jelly/
 ├── README.md             # English
 └── README.zh-TW.md       # 繁體中文
 ```
+
+## License
+
+MIT © 2026 Malilion. See [LICENSE](LICENSE).
