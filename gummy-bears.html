@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gummy Bears</title>
+<style>
+  :root {
+    --bg: #f5f5f3;
+    --ink: #161616;
+    --ink-2: #3b3a37;
+    --muted: #8b877e;
+    --line: rgba(22, 22, 22, 0.08);
+    --accent: #ff7d1f;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Baskerville, "Times New Roman", ui-serif, serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    html, body, button, input, canvas { cursor: none; }
+  }
+  canvas#gl {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    display: block; touch-action: none;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead {
+    position: fixed; top: 40px; left: 44px;
+    max-width: 380px; pointer-events: none; user-select: none;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.16em; color: var(--ink-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .eyebrow .dot { color: var(--accent); font-size: 10px; transition: color .4s ease; }
+  h1 {
+    margin: 18px 0 18px; font-family: var(--serif); font-style: italic; font-weight: 400;
+    font-size: clamp(64px, 8.4vw, 118px); line-height: 0.86; letter-spacing: -0.025em;
+  }
+  h1 > span { display: block; }
+  h1 .slash { color: #bdb8ad; font-style: italic; }
+  .lede {
+    margin: 0; font-size: 14.5px; line-height: 1.55; color: #55524c; max-width: 340px;
+  }
+
+  /* ---------- Hints ---------- */
+  .hints {
+    position: fixed; left: 44px; bottom: 36px; margin: 0; padding: 0; list-style: none;
+    display: grid; grid-template-columns: repeat(2, max-content); gap: 8px;
+    pointer-events: none; user-select: none;
+  }
+  .hints li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 15px 9px 14px; border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    font-size: 12.5px; white-space: nowrap;
+  }
+  .hints b { font-weight: 600; color: var(--ink); }
+  .hints i { width: 1px; height: 11px; background: rgba(22,22,22,.16); }
+  .hints span { color: var(--muted); }
+
+  /* ---------- Control card ---------- */
+  .card {
+    position: fixed; right: 32px; top: 50%; transform: translateY(-50%);
+    width: 272px; padding: 22px 20px 20px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.74);
+    border: 1px solid rgba(22, 22, 22, 0.06);
+    backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.9) inset,
+      0 30px 60px -28px rgba(40, 30, 20, 0.28),
+      0 4px 14px -6px rgba(40, 30, 20, 0.10);
+    user-select: none;
+  }
+  .row { display: flex; align-items: baseline; justify-content: space-between; }
+  .label {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.16em; color: var(--muted);
+  }
+  .value-serif { font-family: var(--serif); font-style: italic; font-size: 20px; color: var(--ink); }
+  .value-mono { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+  .swatches { display: flex; justify-content: space-between; margin: 14px 0 22px; }
+  .swatch {
+    --c: #ff7d1f; --d: #b8410a;
+    width: 38px; height: 38px; border-radius: 50%; border: 0; padding: 0;
+    position: relative;
+    background:
+      radial-gradient(circle at 33% 27%, rgba(255,255,255,.98) 0 5%, rgba(255,255,255,.55) 11%, rgba(255,255,255,0) 26%),
+      radial-gradient(circle at 70% 82%, rgba(255,255,255,.35) 0, rgba(255,255,255,0) 30%),
+      radial-gradient(circle at 46% 42%, var(--c) 0 42%, var(--d) 100%);
+    box-shadow:
+      inset 0 -5px 9px rgba(0,0,0,.16),
+      inset 0 2px 4px rgba(255,255,255,.4),
+      0 8px 12px -7px var(--d);
+    transition: transform .25s cubic-bezier(.3,1.6,.5,1);
+  }
+  .swatch::after {
+    content: ""; position: absolute; inset: -5px; border-radius: 50%;
+    border: 1.5px solid var(--ink); opacity: 0; transform: scale(.85);
+    transition: opacity .2s ease, transform .25s ease;
+  }
+  .swatch:hover { transform: translateY(-2px) scale(1.06); }
+  .swatch:active { transform: scale(.92); }
+  .swatch.active::after { opacity: 1; transform: scale(1); }
+  .swatch:focus-visible { outline: none; }
+  .swatch:focus-visible::after { opacity: .5; transform: scale(1); }
+
+  .slider { margin: 12px 0 22px; position: relative; height: 18px; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 18px; margin: 0;
+    background: transparent;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 3px; border-radius: 3px;
+    background: linear-gradient(to right, var(--ink) 0 var(--fill, 80%), rgba(22,22,22,.12) var(--fill, 80%));
+  }
+  input[type=range]::-moz-range-track { height: 3px; border-radius: 3px; background: rgba(22,22,22,.12); }
+  input[type=range]::-moz-range-progress { height: 3px; border-radius: 3px; background: var(--ink); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px; border-radius: 50%;
+    background: var(--ink); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--ink); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .stat {
+    padding: 11px 12px 9px; border-radius: 14px;
+    border: 1px solid var(--line); background: rgba(255,255,255,.55);
+  }
+  .stat .label { font-size: 9.5px; }
+  .stat .num {
+    display: block; margin-top: 6px;
+    font-family: var(--serif); font-style: italic; font-size: 32px; line-height: 1;
+    font-variant-numeric: tabular-nums; transition: transform .18s ease;
+  }
+  .stat .num.pop { transform: scale(1.12); }
+
+  .pour {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 15px 14px 15px 18px; border: 0; border-radius: 15px;
+    background: var(--ink); color: #f5f5f3;
+    font-family: var(--sans); font-size: 14px; font-weight: 500; letter-spacing: -0.005em;
+    box-shadow: 0 10px 20px -12px rgba(0,0,0,.55);
+    transition: transform .15s ease, background .2s ease;
+  }
+  .pour:hover { background: #262624; transform: translateY(-1px); }
+  .pour:active { transform: translateY(1px) scale(.985); }
+  .pour .plus {
+    font-family: var(--mono); font-size: 11.5px; padding: 4px 8px; border-radius: 8px;
+    background: rgba(255,255,255,.12); color: #fff;
+  }
+
+  /* ---------- Cursor ---------- */
+  #cursor {
+    position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none;
+    will-change: transform; opacity: 0; transition: opacity .2s ease;
+  }
+  #cursor.on { opacity: 1; }
+  #cursor .ring {
+    position: absolute; left: -17px; top: -17px; width: 34px; height: 34px;
+    border: 1.25px solid var(--ink); border-radius: 50%;
+    transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease,
+                border-width .2s ease, background-color .2s ease;
+  }
+  #cursor .pt {
+    position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--ink); transition: transform .18s ease;
+  }
+  #cursor.hover .ring { left: -24px; top: -24px; width: 48px; height: 48px; }
+  #cursor.ui .ring { left: -11px; top: -11px; width: 22px; height: 22px; }
+  #cursor.grab .ring {
+    left: -13px; top: -13px; width: 26px; height: 26px;
+    border-width: 2px; background-color: rgba(22,22,22,.06);
+  }
+  #cursor.grab .pt { transform: scale(1.75); }
+  @media (hover: none), (pointer: coarse) { #cursor { display: none; } }
+
+  .fallback {
+    position: fixed; inset: 0; display: none; place-items: center; text-align: center;
+    font-family: var(--serif); font-style: italic; font-size: 26px; color: var(--ink-2); padding: 24px;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1080px) {
+    .hints { grid-template-columns: max-content; }
+  }
+  @media (max-width: 860px), (max-height: 560px) {
+    .masthead { top: 22px; left: 20px; max-width: 300px; }
+    h1 { font-size: 56px; margin: 12px 0 10px; }
+    .lede { font-size: 12.5px; max-width: 280px; }
+    .hints { display: none; }
+    .card {
+      top: auto; bottom: 12px; right: 12px; left: 12px; transform: none; width: auto;
+      padding: 14px 14px 14px; border-radius: 20px;
+      display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px;
+    }
+    .card .flavor-block { grid-column: 1 / -1; }
+    .swatches { margin: 10px 0 12px; justify-content: flex-start; gap: 14px; }
+    .swatch { width: 32px; height: 32px; }
+    .slider { margin: 8px 0 12px; }
+    .stats { margin-bottom: 12px; }
+    .stat .num { font-size: 24px; }
+    .card .pour-block { grid-column: 1 / -1; }
+  }
+  @media (max-width: 420px) {
+    .lede { display: none; }
+    .card { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<header class="masthead">
+  <div class="eyebrow"><span class="dot">●</span><span>CONFECTIONERY PHYSICS · NO. 03</span></div>
+  <h1><span>Gummy<span class="slash">/</span></span><span>Bears.</span></h1>
+  <p class="lede">Translucent metaball confections cast in elastic sugar-gelatin. Grab any ear, paw, snout or head to stretch; press down to pancake, or flick to throw across the table.</p>
+</header>
+
+<ul class="hints" aria-label="Interactions">
+  <li><b>Pull limb / ear</b><i></i><span>Stretch &amp; wobble</span></li>
+  <li><b>Pull head up</b><i></i><span>Neck stretch &amp; hop</span></li>
+  <li><b>Press head down</b><i></i><span>Pancake &amp; launch</span></li>
+  <li><b>Flick</b><i></i><span>Throw &amp; scatter</span></li>
+</ul>
+
+<aside class="card" aria-label="Controls">
+  <div class="flavor-block">
+    <div class="row"><span class="label">FLAVOR</span><span class="value-serif" id="flavorName">Orange</span></div>
+    <div class="swatches" id="swatches" role="radiogroup" aria-label="Flavor"></div>
+  </div>
+  <div class="wobble-block">
+    <div class="row"><span class="label">WOBBLE</span><span class="value-mono" id="wobbleVal">80%</span></div>
+    <div class="slider"><input type="range" id="wobble" min="0" max="100" value="80" aria-label="Wobble"></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="label">STRETCH</span><span class="num" id="statStretch">1.00×</span></div>
+    <div class="stat"><span class="label">BOUNCES</span><span class="num" id="statBounces">0</span></div>
+  </div>
+  <div class="pour-block">
+    <button class="pour" id="pour"><span>Pour more bears</span><span class="plus">+5</span></button>
+  </div>
+</aside>
+
+<div id="cursor"><div class="ring"></div><div class="pt"></div></div>
+<div class="fallback" id="fallback">This confection needs WebGL2 to set.</div>
+
+<script id="vs" type="x-shader/x-vertex">#version 300 es
+void main() {
+  vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+</script>
+
+<script id="fs" type="x-shader/x-fragment">#version 300 es
+precision highp float;
+precision highp int;
+
+#define MAXB 20
+#define STRIDE 28
+// Per bear (positions in un-squashed space):
+//   [0..9]   node tip (xyz, r)             [10..19] parent joint (xyz, joint r)
+//   [20,21]  eyes (xyz, r)                 [22] squash centre (xyz, sy)
+//   [23]     flavor (rgb, -)               [24..26] body rotation columns   [27] nose
+// Every node is a round cone parent→node, smooth-unioned: parts never detach.
+layout(std140) uniform Bears { vec4 D[MAXB * STRIDE]; vec4 BND[MAXB]; };
+
+uniform int   uCount;
+uniform vec2  uRes;
+uniform vec3  uCamPos, uFw, uRt, uUp;
+uniform float uFocal;
+
+out vec4 fragColor;
+
+const vec3 LDIR = vec3(-0.4661, 0.8474, 0.2542);   // key softbox
+const vec3 SB2  = vec3( 0.6776, 0.4969, 0.5421);   // fill softbox
+const vec3 LCOL = vec3(1.0, 0.985, 0.96);
+const vec3 BGL  = vec3(0.91574, 0.91574, 0.89938); // #f5f5f3 in linear (gamma 2.2)
+
+float dot2(vec3 v) { return dot(v, v); }
+
+float smin(float a, float b, float k) {
+  float h = max(k - abs(a - b), 0.0) / k;
+  return min(a, b) - h * h * k * 0.25;
+}
+
+// Exact round cone between anchor a (radius r1) and tip b (radius r2)
+float sdLimb(vec3 p, vec3 a, vec3 b, float r1, float r2) {
+  vec3 ba = b - a;
+  float l2 = dot(ba, ba);
+  float rr = r1 - r2;
+  if (l2 <= rr * rr + 1e-5) return r1 > r2 ? length(p - a) - r1 : length(p - b) - r2;
+  float a2 = l2 - rr * rr;
+  float il2 = 1.0 / l2;
+  vec3 pa = p - a;
+  float y = dot(pa, ba);
+  float z = y - l2;
+  float x2 = dot2(pa * l2 - ba * y);
+  float y2 = y * y * l2;
+  float z2 = z * z * l2;
+  float k = sign(rr) * rr * rr * x2;
+  if (sign(z) * a2 * z2 > k) return sqrt(x2 + z2) * il2 - r2;
+  if (sign(y) * a2 * y2 < k) return sqrt(x2 + y2) * il2 - r1;
+  return (sqrt(x2 * a2 * il2) + y * rr) * il2 - r1;
+}
+
+float bearBody(int b, vec3 p, out float eye) {
+  int o = b * STRIDE;
+  vec4 bs = D[o + 22];
+  float sy = bs.w, sx = inversesqrt(sy);
+  vec3 S = vec3(sx, sy, sx);
+  vec3 q = bs.xyz + (p - bs.xyz) / S;
+  float d = 1e5;
+  for (int i = 0; i < 10; i++) {
+    vec4 P = D[o + i];
+    vec4 A = D[o + 10 + i];
+    d = smin(d, sdLimb(q, A.xyz, P.xyz, A.w, P.w), i < 3 ? 0.09 : 0.06);
+  }
+  vec4 e1 = D[o + 20], e2 = D[o + 21], ns = D[o + 27];
+  float s = min(sx, sy);
+  eye = min(min(length(q - e1.xyz) - e1.w, length(q - e2.xyz) - e2.w), length(q - ns.xyz) - ns.w) * s;
+  return d * s;
+}
+float bearSDF(int b, vec3 p) { float e; return bearBody(b, p, e); }
+
+vec3 bearNormal(int b, vec3 p) {
+  const vec2 k = vec2(1.0, -1.0);
+  const float h = 0.0018;
+  return normalize(k.xyy * bearSDF(b, p + k.xyy * h) + k.yyx * bearSDF(b, p + k.yyx * h) +
+                   k.yxy * bearSDF(b, p + k.yxy * h) + k.xxx * bearSDF(b, p + k.xxx * h));
+}
+
+int cand[8];
+int nc;
+
+float mapScene(vec3 p, out int hb, out bool eyeHit) {
+  float dm = 1e5; hb = -1; eyeHit = false;
+  for (int k = 0; k < nc; k++) {
+    int b = cand[k];
+    vec4 bd = BND[b];
+    float db = length(p - bd.xyz) - bd.w;
+    if (db > dm) continue;
+    if (db > 0.15) { dm = db; hb = b; eyeHit = false; continue; }
+    float e;
+    float d = bearBody(b, p, e);
+    float dd = min(d, e);
+    if (dd < dm) { dm = dd; hb = b; eyeHit = e < d; }
+  }
+  return dm;
+}
+
+// ---------- Studio environment ----------
+float softbox(vec3 d, vec3 ax, vec2 sz) {
+  float c = dot(d, ax);
+  if (c <= 0.0) return 0.0;
+  vec3 u = normalize(cross(vec3(0.0, 1.0, 0.0), ax));
+  vec3 v = cross(ax, u);
+  vec2 uv = vec2(dot(d, u), dot(d, v)) / c;
+  vec2 e = 1.0 - smoothstep(sz - 0.02, sz, abs(uv));
+  return e.x * e.y;
+}
+vec3 env(vec3 d) {
+  vec3 c = BGL * mix(0.80, 1.05, smoothstep(-0.25, 0.9, d.y));
+  c += LCOL * softbox(d, LDIR, vec2(0.36, 0.22)) * 16.0;
+  c += LCOL * softbox(d, SB2, vec2(0.12, 0.30)) * 9.0;
+  return c;
+}
+
+float sphSoftShadow(vec3 ro, vec3 rd, vec4 sph, float k) {
+  vec3 oc = ro - sph.xyz;
+  float b = dot(oc, rd);
+  float c = dot(oc, oc) - sph.w * sph.w;
+  float h = b * b - c;
+  float d = sqrt(max(0.0, sph.w * sph.w - h)) - sph.w;
+  float t = -b - sqrt(max(h, 0.0));
+  return (t < 0.0) ? 1.0 : smoothstep(0.0, 1.0, 2.5 * k * d / t);
+}
+
+// Floor: colored transmitted shadows, lens caustics and contact AO
+vec3 floorShade(vec3 p) {
+  vec3 direct = vec3(1.0);
+  vec3 caus = vec3(0.0);
+  float ao = 1.0;
+  vec3 aoTint = vec3(1.0);
+  for (int b = 0; b < uCount; b++) {
+    vec4 bd = BND[b];
+    vec3 oc = bd.xyz - p;
+    float along = dot(oc, LDIR);
+    float perp = length(oc - LDIR * along);
+    bool sh = along > -bd.w && perp < bd.w * 1.05 + 0.32 * max(along, 0.0) + 0.1;
+    bool aoN = length(oc) < bd.w * 2.2 + 0.3;
+    if (!sh && !aoN) continue;
+    int o = b * STRIDE;
+    vec4 bs = D[o + 22];
+    float sy = bs.w, sx = inversesqrt(sy);
+    vec3 S = vec3(sx, sy, sx);
+    float rs = 0.75 * sx + 0.25 * sy;
+    vec3 bc = D[o + 23].rgb;
+    float s = 1.0, occ = 0.0, cs = 0.0;
+    for (int i = 0; i < 10; i++) {
+      vec4 P = D[o + i];
+      vec4 A = D[o + 10 + i];
+      vec3 cp = bs.xyz + (P.xyz - bs.xyz) * S;
+      float r = P.w * rs;
+      if (sh) {
+        s = min(s, sphSoftShadow(p, LDIR, vec4(cp, r), 1.5));
+        vec3 ca = bs.xyz + (A.xyz - bs.xyz) * S;
+        if (distance(ca, cp) > 0.07) {
+          float ra = A.w * rs;
+          s = min(s, sphSoftShadow(p, LDIR, vec4(ca, ra), 1.5));
+          s = min(s, sphSoftShadow(p, LDIR, vec4(mix(ca, cp, 0.5), mix(ra, r, 0.5) * 0.85), 1.5));
+        }
+        if (i < 3) {
+          vec3 dv = cp - p;
+          float al = dot(dv, LDIR);
+          if (al > 0.0) {
+            float x = length(dv - LDIR * al) / r;
+            float w = (i == 1) ? 0.45 : 1.0;
+            cs += w * (exp(-x * x * 16.0) * 1.25 + exp(-x * x * 4.0) * 0.28) * (0.85 + 0.15 * cos(x * 18.0));
+          }
+        }
+      }
+      if (aoN) {
+        vec3 dv = cp - p;
+        float dl = max(length(dv), 1e-3);
+        occ += clamp(dv.y / dl, 0.0, 1.0) * (r * r) / (dl * dl);
+      }
+    }
+    vec3 tcol = pow(bc, vec3(1.35)) * 0.82;
+    direct *= mix(tcol, vec3(1.0), s);
+    caus += cs * mix(bc, vec3(1.0), 0.28) * (1.0 - 0.75 * s);
+    float a = clamp(occ * 0.8, 0.0, 1.0);
+    ao *= 1.0 - a * 0.5;
+    aoTint *= mix(vec3(1.0), bc * 0.65 + 0.35, a * 0.55);
+  }
+  vec3 c = BGL * (0.6 + 0.4 * direct) * ao * aoTint;
+  c += BGL * caus * 0.42;
+  return c;
+}
+
+vec3 background(vec3 p, vec3 d) {
+  if (d.y < -0.02) {
+    float t = -p.y / d.y;
+    return floorShade(p + d * t);
+  }
+  return env(d);
+}
+
+// ---------- Gelatin ----------
+float innerThick(int b, vec3 ro, vec3 rd) {
+  float t = 0.0;
+  for (int i = 0; i < 30; i++) {
+    float d = bearSDF(b, ro + rd * t);
+    if (d > 0.0) break;
+    t += max(-d * 0.95, 0.014);
+    if (t > 3.0) break;
+  }
+  return t;
+}
+
+vec3 hash33(vec3 p) {
+  p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.xxy + p.yxx) * p.zyx);
+}
+float bubble(vec3 x) {
+  x *= 10.0;
+  vec3 i = floor(x), f = fract(x);
+  vec3 h = hash33(i + 17.0);
+  if (h.x > 0.2) return 0.0;
+  vec3 c = 0.25 + 0.5 * hash33(i + 3.1);
+  float r = 0.07 + 0.11 * h.y;
+  float dd = length(f - c) / r;
+  return (1.0 - smoothstep(0.82, 1.0, dd)) * (0.2 + 0.8 * smoothstep(0.5, 0.95, dd));
+}
+vec3 toLocal(int b, vec3 p) {
+  int o = b * STRIDE;
+  vec3 d = p - D[o + 22].xyz;
+  return vec3(dot(D[o + 24].xyz, d), dot(D[o + 25].xyz, d), dot(D[o + 26].xyz, d));
+}
+
+vec3 shadeGummy(vec3 rd, vec3 p, vec3 n, int b) {
+  vec3 col = D[b * STRIDE + 23].rgb;
+  float sq = D[b * STRIDE + 22].w;
+  vec3 sigma = -log(clamp(col, vec3(0.012), vec3(0.995))) * 2.3 * mix(1.0, 1.0 / min(sq, 1.0), 0.8);
+
+  float NdV = clamp(dot(n, -rd), 0.0, 1.0);
+  float F = 0.04 + 0.96 * pow(1.0 - NdV, 5.0);
+  vec3 R = reflect(rd, n);
+  vec3 refl = env(R);
+
+  // Refraction through the body (Beer-Lambert)
+  vec3 T = refract(rd, n, 1.0 / 1.45);
+  p -= n * 0.012;                       // start just inside the gelatin
+  float th = innerThick(b, p, T) + 0.012;
+  vec3 pe = p + T * th;
+  vec3 ne = bearNormal(b, pe);
+  vec3 To = refract(T, -ne, 1.45);
+  if (dot(To, To) < 0.01) To = reflect(T, -ne);
+  vec3 trans = background(pe, To) * exp(-sigma * th);
+
+  // Single scattering at mid-path: light that crossed the gelatin from the key softbox
+  vec3 pm = p + T * th * 0.5;
+  float thl = innerThick(b, pm, LDIR);
+  vec3 scat = LCOL * exp(-sigma * (thl + th * 0.5)) * (1.0 - exp(-th * 1.6)) * 0.95;
+  scat += col * col * 0.07 * (1.0 - exp(-th * 2.0));
+  float wrap = clamp((dot(n, LDIR) + 0.5) / 1.5, 0.0, 1.0);
+
+  vec3 body = trans + scat * (0.55 + 0.45 * wrap);
+
+  // Suspended micro-bubbles
+  float bub = 0.0;
+  for (int k = 0; k < 4; k++) {
+    float f = 0.1 + 0.2 * float(k);
+    vec3 sp = p + T * th * f;
+    bub += bubble(toLocal(b, sp)) * exp(-dot(sigma, vec3(0.333)) * th * f * 0.8);
+  }
+  body += bub * (LCOL * 0.38 + col * 0.18);
+
+  vec3 c = body * (1.0 - F) + refl * F;
+  // crisp molded rim
+  c += col * pow(1.0 - NdV, 3.0) * 0.12;
+  return c;
+}
+
+vec3 shadeEye(vec3 rd, vec3 p, int b) {
+  int o = b * STRIDE;
+  vec4 bs = D[o + 22];
+  float sy = bs.w, sx = inversesqrt(sy);
+  vec3 S = vec3(sx, sy, sx);
+  vec3 q = bs.xyz + (p - bs.xyz) / S;
+  vec4 e1 = D[o + 20], e2 = D[o + 21], ns = D[o + 27];
+  vec3 c = length(q - e1.xyz) - e1.w < length(q - e2.xyz) - e2.w ? e1.xyz : e2.xyz;
+  if (length(q - ns.xyz) - ns.w < length(q - c) - e1.w) c = ns.xyz;
+  vec3 n = normalize((q - c) / S);
+  float NdV = clamp(dot(n, -rd), 0.0, 1.0);
+  float F = 0.06 + 0.94 * pow(1.0 - NdV, 5.0);
+  vec3 R = reflect(rd, n);
+  vec3 base = vec3(0.016, 0.008, 0.007) * (0.35 + 0.65 * clamp(dot(n, LDIR), 0.0, 1.0));
+  return base + env(R) * F * 1.4;
+}
+
+float hash12(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+void main() {
+  vec2 uv = (gl_FragCoord.xy * 2.0 - uRes) / uRes.y;
+  vec3 ro = uCamPos;
+  vec3 rd = normalize(uFw * uFocal + uRt * uv.x + uUp * uv.y);
+
+  nc = 0;
+  float tS = 1e9, tE = -1.0;
+  for (int b = 0; b < uCount; b++) {
+    vec4 bd = BND[b];
+    vec3 oc = ro - bd.xyz;
+    float B = dot(oc, rd);
+    float C = dot(oc, oc) - bd.w * bd.w;
+    float h = B * B - C;
+    if (h > 0.0 && nc < 8) {
+      h = sqrt(h);
+      float t1 = -B + h;
+      if (t1 > 0.0) {
+        cand[nc] = b; nc++;
+        tS = min(tS, max(-B - h, 0.0));
+        tE = max(tE, t1);
+      }
+    }
+  }
+
+  float tF = rd.y < 0.0 ? -ro.y / rd.y : 1e9;
+  bool hit = false, eyeHit = false;
+  int hb = -1;
+  float t = tS;
+  if (nc > 0) {
+    tE = min(tE, tF + 0.01);
+    for (int i = 0; i < 128; i++) {
+      int b; bool e;
+      float d = mapScene(ro + rd * t, b, e);
+      if (d < 0.0005 * t) { hit = true; hb = b; eyeHit = e; break; }
+      t += d * 0.92;
+      if (t > tE) break;
+    }
+  }
+
+  vec3 col;
+  if (hit) {
+    vec3 p = ro + rd * t;
+    if (eyeHit) col = shadeEye(rd, p, hb);
+    else col = shadeGummy(rd, p, bearNormal(hb, p), hb);
+  } else if (rd.y < 0.0) {
+    col = floorShade(ro + rd * tF);
+  } else {
+    col = BGL;
+  }
+
+  // soft shoulder for highlights only (background stays exact)
+  vec3 sh = 0.93 + 0.07 * (1.0 - exp(-(col - 0.93) / 0.07));
+  col = mix(col, sh, step(vec3(0.93), col));
+  col = pow(max(col, 0.0), vec3(1.0 / 2.2));
+  col += (hash12(gl_FragCoord.xy) - 0.5) / 255.0;
+  fragColor = vec4(col, 1.0);
+}
+</script>
+
+<script>
+'use strict';
+(() => {
+// =====================================================================
+//  Constants
+// =====================================================================
+const MAXB = 20, STRIDE = 28, NN = 10;
+const H = 1 / 240;                // physics step
+const GRAV = 16;
+const K_SHAPE = 320;
+
+// Hierarchical anatomy (bear-local, y up, +z faces camera).
+// Each non-root node is rendered as a round cone from its parent → itself,
+// so ears/snout/head/arms/legs are always welded to the body.
+//   rest: rest position · r: tip radius · ra: joint radius at the parent end
+//   m: mass · kb: parent↔child bone stiffness
+const NODES = [
+  { name: 'belly', parent: -1, rest: [0.00, 0.37, 0.04], r: 0.275, ra: 0.275, m: 3.0,  kb: 0 },
+  { name: 'chest', parent: 0,  rest: [0.00, 0.63, 0.00], r: 0.225, ra: 0.240, m: 2.4,  kb: 230 },
+  { name: 'head',  parent: 1,  rest: [0.00, 0.98, 0.01], r: 0.265, ra: 0.150, m: 2.6,  kb: 130 },
+  { name: 'snout', parent: 2,  rest: [0.00, 0.905, 0.245], r: 0.125, ra: 0.110, m: 0.4, kb: 45 },
+  { name: 'earL',  parent: 2,  rest: [-0.205, 1.20, -0.03], r: 0.098, ra: 0.075, m: 0.3, kb: 38 },
+  { name: 'earR',  parent: 2,  rest: [ 0.205, 1.20, -0.03], r: 0.098, ra: 0.075, m: 0.3, kb: 38 },
+  { name: 'armL',  parent: 1,  rest: [-0.285, 0.555, 0.17], r: 0.108, ra: 0.105, m: 0.45, kb: 50 },
+  { name: 'armR',  parent: 1,  rest: [ 0.285, 0.555, 0.17], r: 0.108, ra: 0.105, m: 0.45, kb: 50 },
+  { name: 'legL',  parent: 0,  rest: [-0.165, 0.145, 0.19], r: 0.145, ra: 0.150, m: 0.6, kb: 120 },
+  { name: 'legR',  parent: 0,  rest: [ 0.165, 0.145, 0.19], r: 0.145, ra: 0.150, m: 0.6, kb: 120 },
+];
+const BELLY = 0, CHEST = 1, HEAD = 2;
+const PARENT = NODES.map(n => n.parent);
+const REST = NODES.map(n => n.rest);
+const RAD = NODES.map(n => n.r);
+const RADA = NODES.map(n => n.ra);
+const MASS = NODES.map(n => n.m);
+const KB = NODES.map(n => n.kb);
+const M_TOTAL = MASS.reduce((a, b) => a + b, 0);
+const BONE = NODES.map((n, i) => n.parent < 0 ? [0, 0, 0] : REST[i].map((x, a) => x - REST[n.parent][a]));
+const NECK = [0.14, 0.32, 0, 0, 0, 0, 0.16, 0.16, 0, 0];         // torso follows a pulled head
+const KS = [1, 1, 1, 1.25, 1.25, 1.25, 0.8, 0.8, 1.1, 1.1];
+const DRAGW = [1.7, 1.7, 0.75, 0.4, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
+const EYE = [0.093, 0.065, 0.222], EYE_R = 0.034;
+const NOSE = [0.0, 0.035, 0.112], NOSE_R = 0.04;   // relative to the snout
+
+// rest centre of mass, optionally excluding one (grabbed) node
+const REST_COM = [];
+for (let j = -1; j < NN; j++) {
+  let m = 0, x = 0, y = 0, z = 0;
+  for (let i = 0; i < NN; i++) {
+    if (i === j) continue;
+    m += MASS[i]; x += REST[i][0] * MASS[i]; y += REST[i][1] * MASS[i]; z += REST[i][2] * MASS[i];
+  }
+  REST_COM.push([x / m, y / m, z / m]);
+}
+
+const FLAVORS = [
+  { name: 'Cherry Red',  css: '#d8192e', dark: '#7a0612', lin: [0.80, 0.035, 0.045] },
+  { name: 'Orange',      css: '#ff7d1f', dark: '#b8410a', lin: [1.00, 0.36, 0.035] },
+  { name: 'Lemon',       css: '#ffd43b', dark: '#c08a05', lin: [1.00, 0.80, 0.10] },
+  { name: 'Apple Green', css: '#7fc63b', dark: '#3c7a12', lin: [0.36, 0.78, 0.06] },
+  { name: 'Pineapple',   css: '#f3e7ae', dark: '#c9b062', lin: [0.97, 0.92, 0.62] },
+];
+
+// =====================================================================
+//  State
+// =====================================================================
+let bears = [];
+let spawnQueue = [];
+let activeFlavor = 1;
+let wobble = 0.8;
+let bounces = 0;
+let grab = null;
+let lastTouched = null;
+let simTime = 0;
+let nextId = 0;
+
+const cam = { pos: [0, 0, 0], fw: [0, 0, -1], rt: [1, 0, 0], up: [0, 1, 0], f: 3.7 };
+const bounds = { zNear: 3, zFar: -3.5, xln: -5, xrn: 5, xlf: -5, xrf: 5 };
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const rand = (a, b) => a + Math.random() * (b - a);
+
+// ---------- quaternions [x, y, z, w] / column-major 3x3 ----------
+function qMul(a, b) {
+  return [
+    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+  ];
+}
+function qAxis(ax, ay, az, ang) { const s = Math.sin(ang / 2); return [ax * s, ay * s, az * s, Math.cos(ang / 2)]; }
+function qNorm(q) { const l = Math.hypot(q[0], q[1], q[2], q[3]) || 1; return [q[0] / l, q[1] / l, q[2] / l, q[3] / l]; }
+function qToMat(q, M) {
+  const [x, y, z, w] = q;
+  M[0] = 1 - 2 * (y * y + z * z); M[1] = 2 * (x * y + z * w); M[2] = 2 * (x * z - y * w);
+  M[3] = 2 * (x * y - z * w); M[4] = 1 - 2 * (x * x + z * z); M[5] = 2 * (y * z + x * w);
+  M[6] = 2 * (x * z + y * w); M[7] = 2 * (y * z - x * w); M[8] = 1 - 2 * (x * x + y * y);
+}
+
+// =====================================================================
+//  Bears
+// =====================================================================
+function makeBear(x, y, z, yaw, fl) {
+  const B = {
+    id: nextId++,
+    p: new Float32Array(NN * 3), v: new Float32Array(NN * 3),
+    g: new Float32Array(NN * 3), a: new Float32Array(NN * 3),
+    L0: new Float32Array(NN), q: qAxis(0, 1, 0, yaw), R: new Float32Array(9),
+    sy: 1, syVel: 0, anchor: 0, liftF: 0, upBias: 0,
+    col: FLAVORS[fl].lin.slice(), tcol: FLAVORS[fl].lin.slice(), fl,
+    alive: 1, dying: false, bounceCD: 0, air: 1,
+    com: [x, y, z], vcom: [0, 0, 0], base: [x, y, z], dh: [0, 0, 0],
+    wp: new Float32Array(NN * 3), wr: new Float32Array(NN), f: new Float32Array(NN).fill(1),
+  };
+  qToMat(B.q, B.R);
+  const R = B.R;
+  for (let i = 0; i < NN; i++) {
+    const [rx, ry, rz] = REST[i];
+    for (let a = 0; a < 3; a++) B.p[i * 3 + a] = [x, y, z][a] + R[a] * rx + R[3 + a] * ry + R[6 + a] * rz;
+    B.v[i * 3 + 1] = -2;
+    B.L0[i] = Math.hypot(...BONE[i]);
+  }
+  B.g.set(B.p);
+  return B;
+}
+
+function setFlavor(B, fl) { B.fl = fl; B.tcol = FLAVORS[fl].lin.slice(); }
+
+function queuePour(n, flavorFn, delay = 0) {
+  const xs = [];
+  for (let k = 0; k < n; k++) {
+    const zc = rand(-1.3, 2.2);
+    const s = clamp((zc - bounds.zFar) / (bounds.zNear - bounds.zFar), 0, 1);
+    const xl0 = lerp(bounds.xlf, bounds.xln, s), xr0 = lerp(bounds.xrf, bounds.xrn, s);
+    const xl = lerp(xl0, xr0, 0.3), xr = xr0 - 0.6;
+    let x = rand(xl, xr);
+    for (let tries = 0; tries < 8 && xs.some(o => Math.abs(o - x) < 0.8); tries++) x = rand(xl, xr);
+    xs.push(x);
+    spawnQueue.push({ at: simTime + delay + k * 0.14, x, z: zc, y: 4.6 + k * 0.35 + rand(0, 0.6), fl: flavorFn(k) });
+  }
+}
+
+function processSpawns() {
+  spawnQueue.sort((a, b) => a.at - b.at);
+  while (spawnQueue.length && spawnQueue[0].at <= simTime) {
+    if (bears.length >= MAXB) {
+      if (!bears.some(b => b.dying)) {
+        const victim = bears.find(b => !b.dying && !(grab && grab.B === b));
+        if (victim) victim.dying = true;
+      }
+      return;                                         // wait for a free slot
+    }
+    const s = spawnQueue.shift();
+    bears.push(makeBear(s.x, s.y, s.z, rand(-0.45, 0.45), s.fl));
+  }
+}
+
+// =====================================================================
+//  Physics — shape matching (translation + full rotation) coupled with a
+//  two-way parent↔child bone spring network
+// =====================================================================
+function zetaFromWobble() { return lerp(0.9, 0.065, wobble); }
+
+function step(h) {
+  const n = bears.length;
+  const zeta = zetaFromWobble();
+  for (const B of bears) B.a.fill(0);
+
+  // soft bear-to-bear contact
+  const KC = 1500, CC = 14;
+  for (let ia = 0; ia < n; ia++) {
+    const A = bears[ia];
+    if (A.dying) continue;
+    for (let ib = ia + 1; ib < n; ib++) {
+      const Bb = bears[ib];
+      if (Bb.dying) continue;
+      const dx = A.com[0] - Bb.com[0], dy = A.com[1] - Bb.com[1], dz = A.com[2] - Bb.com[2];
+      if (dx * dx + dy * dy + dz * dz > 2.8 * 2.8) continue;
+      const sA = Math.pow(A.sy, -0.5), sB = Math.pow(Bb.sy, -0.5);
+      for (let i = 0; i < NN; i++) {
+        const ax = A.p[i * 3], ay = A.p[i * 3 + 1], az = A.p[i * 3 + 2];
+        for (let j = 0; j < NN; j++) {
+          const ex = ax - Bb.p[j * 3], ey = ay - Bb.p[j * 3 + 1], ez = az - Bb.p[j * 3 + 2];
+          const rs = RAD[i] * A.f[i] * sA + RAD[j] * Bb.f[j] * sB;
+          const d2 = ex * ex + ey * ey + ez * ez;
+          if (d2 >= rs * rs || d2 < 1e-9) continue;
+          const d = Math.sqrt(d2), nx = ex / d, ny = ey / d, nz = ez / d;
+          const vn = (A.v[i * 3] - Bb.v[j * 3]) * nx + (A.v[i * 3 + 1] - Bb.v[j * 3 + 1]) * ny + (A.v[i * 3 + 2] - Bb.v[j * 3 + 2]) * nz;
+          const f = KC * (rs - d) - CC * vn;
+          if (f <= 0) continue;
+          A.a[i * 3] += nx * f; A.a[i * 3 + 1] += ny * f; A.a[i * 3 + 2] += nz * f;
+          Bb.a[j * 3] -= nx * f; Bb.a[j * 3 + 1] -= ny * f; Bb.a[j * 3 + 2] -= nz * f;
+        }
+      }
+    }
+  }
+
+  for (const B of bears) {
+    const p = B.p, v = B.v, g = B.g, acc = B.a, R = B.R;
+    const G = grab && grab.B === B && grab.target ? grab : null;
+    const ex = G && G.kind !== 'body' && G.mode === 'pull' ? G.i : -1;
+    const dh = B.dh;
+
+    // --- centre of mass (minus the neck-follow offset, so it can't feed back)
+    let m = 0, cx = 0, cy = 0, cz = 0, vx = 0, vy = 0, vz = 0;
+    for (let i = 0; i < NN; i++) {
+      if (i === ex) continue;
+      const w = MASS[i], nk = NECK[i];
+      m += w;
+      cx += (p[i * 3] - dh[0] * nk) * w; cy += (p[i * 3 + 1] - dh[1] * nk) * w; cz += (p[i * 3 + 2] - dh[2] * nk) * w;
+      vx += v[i * 3] * w; vy += v[i * 3 + 1] * w; vz += v[i * 3 + 2] * w;
+    }
+    cx /= m; cy /= m; cz /= m; vx /= m; vy /= m; vz /= m;
+    B.com[0] = cx; B.com[1] = cy; B.com[2] = cz;
+    B.vcom[0] = vx; B.vcom[1] = vy; B.vcom[2] = vz;
+    const rc = REST_COM[ex + 1];
+
+    // --- optimal rotation (Müller et al. quaternion polar extraction)
+    const Am = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < NN; i++) {
+      if (i === ex) continue;
+      const w = MASS[i], nk = NECK[i];
+      const px = p[i * 3] - dh[0] * nk - cx, py = p[i * 3 + 1] - dh[1] * nk - cy, pz = p[i * 3 + 2] - dh[2] * nk - cz;
+      const qx = REST[i][0] - rc[0], qy = REST[i][1] - rc[1], qz = REST[i][2] - rc[2];
+      Am[0] += w * px * qx; Am[1] += w * py * qx; Am[2] += w * pz * qx;
+      Am[3] += w * px * qy; Am[4] += w * py * qy; Am[5] += w * pz * qy;
+      Am[6] += w * px * qz; Am[7] += w * py * qz; Am[8] += w * pz * qz;
+    }
+    // undo the vertical squash before extracting rotation
+    const sy = B.sy, sx = 1 / Math.sqrt(sy);
+    for (let c = 0; c < 3; c++) { Am[c * 3] /= sx; Am[c * 3 + 1] /= sy; Am[c * 3 + 2] /= sx; }
+    let q = B.q;
+    for (let it = 0; it < 3; it++) {
+      qToMat(q, R);
+      let ox = 0, oy = 0, oz = 0, dd = 0;
+      for (let c = 0; c < 3; c++) {
+        const r0 = R[c * 3], r1 = R[c * 3 + 1], r2 = R[c * 3 + 2];
+        const a0 = Am[c * 3], a1 = Am[c * 3 + 1], a2 = Am[c * 3 + 2];
+        ox += r1 * a2 - r2 * a1; oy += r2 * a0 - r0 * a2; oz += r0 * a1 - r1 * a0;
+        dd += r0 * a0 + r1 * a1 + r2 * a2;
+      }
+      const s = 1 / (Math.abs(dd) + 1e-9);
+      ox *= s; oy *= s; oz *= s;
+      const w = Math.hypot(ox, oy, oz);
+      if (w < 1e-9) break;
+      q = qNorm(qMul(qAxis(ox / w, oy / w, oz / w, w), q));
+    }
+    B.q = q;                                         // warm start for next step
+    // goal orientation is biased toward upright while resting/standing, so a
+    // gummy that topples over springs back onto its feet (heading is kept)
+    B.upBias = lerp(B.upBias, !G && B.anchor > 0.5 ? 0.6 : 0, 1 - Math.exp(-h * 3));
+    qToMat(q, R);
+    if (B.upBias > 0.01) {
+      const ux = R[3], uy = R[4], uz = R[5];
+      const axx = -uz, axz = ux;                       // up × worldUp
+      const sa = Math.hypot(axx, axz);
+      if (sa > 1e-5) {
+        const ang = Math.atan2(sa, uy) * B.upBias;
+        qToMat(qMul(qAxis(axx / sa, 0, axz / sa, ang), q), R);
+      }
+    }
+
+    // --- contacts → vertical anchor (a standing bear carries its own weight)
+    let anchorY = 0, anchorM = 0;
+    for (let i = 0; i < NN; i++) {
+      const I = i * 3;
+      if (p[I + 1] > RAD[i] * sy + 0.006 || i === ex) continue;
+      const qx = REST[i][0] - rc[0], qy = REST[i][1] - rc[1], qz = REST[i][2] - rc[2];
+      const gy = (R[1] * qx + R[4] * qy + R[7] * qz) * sy;
+      anchorY += (p[I + 1] - gy) * MASS[i]; anchorM += MASS[i];
+    }
+    const lifting = G && (G.kind === 'body' || B.liftF > M_TOTAL * GRAV * 1.05);
+    const anchorTarget = anchorM > 0 && !lifting ? 1 : 0;
+    B.anchor = lerp(B.anchor, anchorTarget, 1 - Math.exp(-h * (anchorTarget ? 40 : 12)));
+    const ty = anchorM > 0 ? lerp(cy, anchorY / anchorM, B.anchor) : cy;
+
+    // --- goal shape: translation + rotation + volume-preserving squash
+    for (let i = 0; i < NN; i++) {
+      const qx = REST[i][0] - rc[0], qy = REST[i][1] - rc[1], qz = REST[i][2] - rc[2];
+      g[i * 3] = cx + (R[0] * qx + R[3] * qy + R[6] * qz) * sx;
+      g[i * 3 + 1] = ty + (R[1] * qx + R[4] * qy + R[7] * qz) * sy;
+      g[i * 3 + 2] = cz + (R[2] * qx + R[5] * qy + R[8] * qz) * sx;
+    }
+    // a pulled head drags chest/belly/arms up with it (neck elongation)
+    const hx = p[6] - g[6], hy = p[7] - g[7], hz = p[8] - g[8];
+    dh[0] = hx; dh[1] = hy; dh[2] = hz;
+    for (let i = 0; i < NN; i++) {
+      if (!NECK[i]) continue;
+      g[i * 3] += hx * NECK[i]; g[i * 3 + 1] += hy * NECK[i]; g[i * 3 + 2] += hz * NECK[i];
+    }
+
+    // --- shape springs + gravity
+    for (let i = 0; i < NN; i++) {
+      const k = K_SHAPE * KS[i], cd = 2 * Math.sqrt(k) * zeta;
+      for (let a = 0; a < 3; a++) {
+        const I = i * 3 + a;
+        acc[I] += k * (g[I] - p[I]) - cd * (v[I] - B.vcom[a]) - 0.18 * v[I];
+      }
+      acc[i * 3 + 1] -= GRAV;
+    }
+
+    // --- two-way bone springs (child ↔ parent), stiffening like pulled taffy
+    B.liftF = 0;
+    for (let i = 1; i < NN; i++) {
+      const pa = PARENT[i], I = i * 3, P = pa * 3;
+      const bx = BONE[i][0], by = BONE[i][1], bz = BONE[i][2];
+      const L0 = Math.hypot((R[0] * bx + R[3] * by + R[6] * bz) * sx, (R[1] * bx + R[4] * by + R[7] * bz) * sy, (R[2] * bx + R[5] * by + R[8] * bz) * sx);
+      B.L0[i] = L0;
+      const dx = p[I] - p[P], dy = p[I + 1] - p[P + 1], dz = p[I + 2] - p[P + 2];
+      const L = Math.hypot(dx, dy, dz) || 1e-6;
+      const nx = dx / L, ny = dy / L, nz = dz / L;
+      const x = L - L0;
+      const vrel = (v[I] - v[P]) * nx + (v[I + 1] - v[P + 1]) * ny + (v[I + 2] - v[P + 2]) * nz;
+      const mred = MASS[i] * MASS[pa] / (MASS[i] + MASS[pa]);
+      const F = KB[i] * x * (x > 0 ? 1 + 1.2 * x : 1) + 2 * zeta * Math.sqrt(KB[i] * mred) * vrel;
+      acc[I] -= F * nx / MASS[i]; acc[I + 1] -= F * ny / MASS[i]; acc[I + 2] -= F * nz / MASS[i];
+      acc[P] += F * nx / MASS[pa]; acc[P + 1] += F * ny / MASS[pa]; acc[P + 2] += F * nz / MASS[pa];
+      if (i === ex) B.liftF = Math.max(0, F * ny);
+    }
+
+    // --- interaction
+    if (G) {
+      const T = G.target, pv = G.pv;
+      if (G.kind === 'body') {
+        const KBD = 120, CBD = 15;
+        for (let i = 0; i < NN; i++) {
+          const w = DRAGW[i];
+          for (let a = 0; a < 3; a++) acc[i * 3 + a] += w * (KBD * (T[a] - B.com[a]) - CBD * (B.vcom[a] - pv[a]));
+        }
+      } else if (G.mode === 'pull') {
+        const J = G.i * 3, P = PARENT[G.i] * 3;
+        // keep the taffy from being pulled further than ~2.4 units from its joint
+        let tx = T[0], ty2 = T[1], tz = T[2];
+        const ddx = tx - p[P], ddy = ty2 - p[P + 1], ddz = tz - p[P + 2], dl = Math.hypot(ddx, ddy, ddz);
+        if (dl > 2.4) { const f = 2.4 / dl; tx = p[P] + ddx * f; ty2 = p[P + 1] + ddy * f; tz = p[P + 2] + ddz * f; }
+        acc[J] = 900 * (tx - p[J]) - 55 * (v[J] - pv[0]);
+        acc[J + 1] = 900 * (ty2 - p[J + 1]) - 55 * (v[J + 1] - pv[1]);
+        acc[J + 2] = 900 * (tz - p[J + 2]) - 55 * (v[J + 2] - pv[2]);
+      }
+    }
+
+    // --- integrate + collide with the table and walls
+    let grounded = false;
+    for (let i = 0; i < NN; i++) {
+      const I = i * 3, r = RAD[i] * B.f[i], ry = r * sy;
+      v[I] += acc[I] * h; v[I + 1] += acc[I + 1] * h; v[I + 2] += acc[I + 2] * h;
+      p[I] += v[I] * h; p[I + 1] += v[I + 1] * h; p[I + 2] += v[I + 2] * h;
+
+      if (p[I + 1] < ry) {
+        p[I + 1] = ry;
+        if (v[I + 1] < 0) {
+          if (v[I + 1] < -3.2 && B.bounceCD <= 0 && B.air > 0.1) {
+            bounces++; bumpBounce();
+            B.bounceCD = 0.22;
+            B.syVel -= Math.min(-v[I + 1] * 0.5, 5.5);
+          }
+          v[I + 1] = -v[I + 1] * 0.3;
+        }
+        const fr = Math.exp(-h * 5.5);
+        v[I] *= fr; v[I + 2] *= fr;
+        grounded = true;
+      }
+      const rx = r * sx;
+      const zmin = bounds.zFar + rx, zmax = bounds.zNear - rx;
+      if (p[I + 2] < zmin) { p[I + 2] = zmin; if (v[I + 2] < 0) v[I + 2] *= -0.45; }
+      if (p[I + 2] > zmax) { p[I + 2] = zmax; if (v[I + 2] > 0) v[I + 2] *= -0.45; }
+      const t = clamp((p[I + 2] - bounds.zFar) / (bounds.zNear - bounds.zFar), 0, 1);
+      const xmin = lerp(bounds.xlf, bounds.xln, t) + rx, xmax = lerp(bounds.xrf, bounds.xrn, t) - rx;
+      if (p[I] < xmin) { p[I] = xmin; if (v[I] < 0) v[I] *= -0.45; }
+      if (p[I] > xmax) { p[I] = xmax; if (v[I] > 0) v[I] *= -0.45; }
+    }
+    B.air = grounded ? 0 : B.air + h;
+    B.bounceCD -= h;
+
+    // --- vertical squash (pancake): nodes spread out sideways, flatten vertically
+    if (G && G.kind === 'head' && G.mode === 'squash') {
+      B.sy = lerp(B.sy, 1 - G.squash, 1 - Math.exp(-h * 28));
+      B.syVel = 0;
+    } else {
+      const ks = 240, cs = 2 * Math.sqrt(ks) * Math.max(zeta, 0.1);
+      B.syVel += (ks * (1 - B.sy) - cs * B.syVel) * h;
+      B.sy += B.syVel * h;
+      B.sy = clamp(B.sy, 0.28, 1.85);
+    }
+  }
+}
+
+// add a spin (rad/s about axis) to the whole bear
+function spin(B, wx, wy, wz) {
+  for (let i = 0; i < NN; i++) {
+    const rx = B.p[i * 3] - B.com[0], ry = B.p[i * 3 + 1] - B.com[1], rz = B.p[i * 3 + 2] - B.com[2];
+    B.v[i * 3] += wy * rz - wz * ry; B.v[i * 3 + 1] += wz * rx - wx * rz; B.v[i * 3 + 2] += wx * ry - wy * rx;
+  }
+}
+
+// =====================================================================
+//  Rendering data
+// =====================================================================
+const ubo = new Float32Array((MAXB * STRIDE + MAXB) * 4);
+let stretchNow = 1;
+
+function pack() {
+  const n = Math.min(bears.length, MAXB);
+  stretchNow = 1;
+  for (let b = 0; b < n; b++) {
+    const B = bears[b], p = B.p, R = B.R;
+    const o = b * STRIDE * 4;
+    const al = B.dying ? Math.max(0, B.alive) ** 2 : 1;
+    const sy = B.sy, sx = 1 / Math.sqrt(sy);
+    const S = [sx, sy, sx];
+    const base = B.base;
+    base[0] = B.com[0]; base[1] = B.com[1]; base[2] = B.com[2];
+    // positions are uploaded in "unsquashed" space; the shader re-applies S
+    const toQ = (x, a) => base[a] + (base[a] + (x - base[a]) * al - base[a]) / S[a];
+
+    // volume conservation: every bone thins by 1/sqrt(stretch)
+    for (let i = 0; i < NN; i++) {
+      if (i === BELLY) { B.f[i] = 1; continue; }
+      const P = PARENT[i] * 3, I = i * 3;
+      const L = Math.hypot(p[I] - p[P], p[I + 1] - p[P + 1], p[I + 2] - p[P + 2]);
+      const s = L / Math.max(B.L0[i], 1e-3);
+      B.f[i] = clamp(1 / Math.sqrt(Math.max(s, 1e-3)), 0.3, 1.12);
+      stretchNow = Math.max(stretchNow, s);
+    }
+    stretchNow = Math.max(stretchNow, sy > 1 ? sy : 1 / sy);
+
+    for (let i = 0; i < NN; i++) {
+      const I = i * 3, pa = Math.max(PARENT[i], 0), P = pa * 3;
+      const f = B.f[i];
+      const T = o + i * 4, A = o + (10 + i) * 4;
+      for (let a = 0; a < 3; a++) {
+        ubo[T + a] = toQ(p[I + a], a);
+        ubo[A + a] = i === BELLY ? ubo[T + a] : toQ(p[P + a], a);
+      }
+      ubo[T + 3] = RAD[i] * f * al;
+      ubo[A + 3] = (i === BELLY ? RAD[i] : RADA[i]) * f * al;
+    }
+
+    // eyes ride on the head, oriented by the body rotation
+    const fh = B.f[HEAD];
+    for (let e = 0; e < 2; e++) {
+      const exl = (e ? EYE[0] : -EYE[0]) * fh, eyl = EYE[1] * fh, ezl = EYE[2] * fh;
+      const E = o + (20 + e) * 4;
+      for (let a = 0; a < 3; a++) {
+        const off = (R[a] * exl + R[3 + a] * eyl + R[6 + a] * ezl) * al;
+        ubo[E + a] = ubo[o + HEAD * 4 + a] + off;
+      }
+      ubo[E + 3] = EYE_R * fh * al;
+    }
+    {
+      const fs = B.f[3], N = o + 27 * 4;
+      for (let a = 0; a < 3; a++) ubo[N + a] = ubo[o + 3 * 4 + a] + (R[3 + a] * NOSE[1] + R[6 + a] * NOSE[2]) * fs * al;
+      ubo[N + 3] = NOSE_R * fs * al;
+    }
+    ubo[o + 88] = base[0]; ubo[o + 89] = base[1]; ubo[o + 90] = base[2]; ubo[o + 91] = sy;
+    ubo[o + 92] = B.col[0]; ubo[o + 93] = B.col[1]; ubo[o + 94] = B.col[2]; ubo[o + 95] = 0;
+    for (let c = 0; c < 3; c++) {
+      ubo[o + 96 + c * 4] = R[c * 3]; ubo[o + 97 + c * 4] = R[c * 3 + 1]; ubo[o + 98 + c * 4] = R[c * 3 + 2]; ubo[o + 99 + c * 4] = 0;
+    }
+
+    // world-space nodes for bounds & picking
+    let bx = 0, by = 0, bz = 0;
+    const sm = Math.max(sx, sy);
+    for (let i = 0; i < NN; i++) {
+      for (let a = 0; a < 3; a++) B.wp[i * 3 + a] = base[a] + (ubo[o + i * 4 + a] - base[a]) * S[a];
+      B.wr[i] = ubo[o + i * 4 + 3] * sm;
+      bx += B.wp[i * 3]; by += B.wp[i * 3 + 1]; bz += B.wp[i * 3 + 2];
+    }
+    bx /= NN; by /= NN; bz /= NN;
+    let rad = 0;
+    for (let i = 0; i < NN; i++) {
+      rad = Math.max(rad, Math.hypot(B.wp[i * 3] - bx, B.wp[i * 3 + 1] - by, B.wp[i * 3 + 2] - bz) + B.wr[i]);
+    }
+    const bo = (MAXB * STRIDE + b) * 4;
+    ubo[bo] = bx; ubo[bo + 1] = by; ubo[bo + 2] = bz; ubo[bo + 3] = rad + 0.08;
+  }
+  return n;
+}
+
+// =====================================================================
+//  WebGL
+// =====================================================================
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
+if (!gl) {
+  document.getElementById('fallback').style.display = 'grid';
+  return;
+}
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    throw new Error('Shader compile failed: ' + gl.getShaderInfoLog(s));
+  }
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, document.getElementById('vs').textContent));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, document.getElementById('fs').textContent));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const blockIdx = gl.getUniformBlockIndex(prog, 'Bears');
+gl.uniformBlockBinding(prog, blockIdx, 0);
+const ubuf = gl.createBuffer();
+gl.bindBuffer(gl.UNIFORM_BUFFER, ubuf);
+gl.bufferData(gl.UNIFORM_BUFFER, ubo.byteLength, gl.DYNAMIC_DRAW);
+gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, ubuf);
+gl.bindVertexArray(gl.createVertexArray());
+const U = {};
+for (const name of ['uCount', 'uRes', 'uCamPos', 'uFw', 'uRt', 'uUp', 'uFocal']) U[name] = gl.getUniformLocation(prog, name);
+
+let renderScale = Math.min(window.devicePixelRatio || 1, 1.25);
+const maxScale = Math.min(window.devicePixelRatio || 1, 2);
+let W = innerWidth, Hh = innerHeight;
+
+function setupCamera() {
+  W = innerWidth; Hh = innerHeight;
+  const aspect = W / Hh;
+  const dist = 12.5 * Math.min(1.7, Math.pow(Math.max(1, 1.45 / aspect), 0.85));
+  const elev = 38 * Math.PI / 180;
+  const target = [aspect > 1.15 ? 0.35 : 0, 0.4, aspect < 1.15 ? 1.2 : 0.9];
+  cam.pos = [target[0], target[1] + dist * Math.sin(elev), target[2] + dist * Math.cos(elev)];
+  const fw = norm(sub(target, cam.pos));
+  const rt = norm(cross(fw, [0, 1, 0]));
+  cam.fw = fw; cam.rt = rt; cam.up = cross(rt, fw);
+  cam.f = 1 / Math.tan(15 * Math.PI / 180);
+  computeBounds();
+}
+function resize() {
+  setupCamera();
+  canvas.width = Math.max(1, Math.round(W * renderScale));
+  canvas.height = Math.max(1, Math.round(Hh * renderScale));
+}
+
+function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function add(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function mul(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+function norm(a) { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+
+function rayFrom(px, py) {
+  const ux = (2 * px - W) / Hh, uy = (Hh - 2 * py) / Hh;
+  const d = norm([
+    cam.fw[0] * cam.f + cam.rt[0] * ux + cam.up[0] * uy,
+    cam.fw[1] * cam.f + cam.rt[1] * ux + cam.up[1] * uy,
+    cam.fw[2] * cam.f + cam.rt[2] * ux + cam.up[2] * uy,
+  ]);
+  return { o: cam.pos, d };
+}
+function project(p) {
+  const v = sub(p, cam.pos);
+  const z = dot(v, cam.fw);
+  const x = dot(v, cam.rt) / z * cam.f, y = dot(v, cam.up) / z * cam.f;
+  return [(x * Hh + W) / 2, (Hh - y * Hh) / 2];
+}
+function rayPlane(r, p0, n) {
+  const den = dot(r.d, n);
+  if (Math.abs(den) < 1e-5) return -1;
+  return dot(sub(p0, r.o), n) / den;
+}
+
+function computeBounds() {
+  const y0 = 0.6;
+  const wide = W > 860 && Hh > 560;
+  const leftPx = 18, rightPx = wide ? W - 340 : W - 18;
+  const botPx = wide ? Hh - 24 : Hh - (W <= 420 ? 330 : 250);
+  const topPx = wide ? Hh * 0.2 : Hh * 0.28;
+  const at = (px, py) => {
+    const r = rayFrom(px, py);
+    const t = (y0 - r.o[1]) / r.d[1];
+    return add(r.o, mul(r.d, t));
+  };
+  const nearC = at(W / 2, botPx), farC = at(W / 2, topPx);
+  bounds.zNear = nearC[2];
+  bounds.zFar = Math.max(farC[2], bounds.zNear - 7.5, -4.2);
+  const farPy = project([0, y0, bounds.zFar])[1];
+  const xAt = (px, py) => { const q = at(px, py); return q[0]; };
+  bounds.xln = xAt(leftPx, botPx); bounds.xrn = xAt(rightPx, botPx);
+  bounds.xlf = xAt(leftPx, farPy); bounds.xrf = xAt(rightPx, farPy);
+}
+
+// =====================================================================
+//  Picking & interaction
+// =====================================================================
+function pick(px, py) {
+  const r = rayFrom(px, py);
+  let best = null;
+  for (const B of bears) {
+    if (B.dying) continue;
+    for (let i = 0; i < NN; i++) {
+      const pad = i >= 3 ? 1.15 : 1.02;
+      const c = [B.wp[i * 3], B.wp[i * 3 + 1], B.wp[i * 3 + 2]];
+      const rr = B.wr[i] * pad;
+      const oc = sub(r.o, c);
+      const b = dot(oc, r.d), cc = dot(oc, oc) - rr * rr, h = b * b - cc;
+      if (h < 0) continue;
+      const t = -b - Math.sqrt(h);
+      if (t > 0 && (!best || t < best.t - (i >= 3 ? 0.03 : 0))) best = { B, i, t };
+    }
+  }
+  return best ? { ...best, ray: r } : null;
+}
+
+function updateGrabTarget(now) {
+  if (!grab) return;
+  const r = rayFrom(grab.cx, grab.cy);
+  let t = rayPlane(r, grab.P0, grab.planeN);
+  if (t <= 0) return;
+  t = Math.min(t, 60);
+  const hit = add(r.o, mul(r.d, t));
+  if (grab.kind === 'body') {
+    const T = sub(hit, grab.offset);
+    T[1] += grab.lift;
+    T[2] = clamp(T[2], bounds.zFar, bounds.zNear);
+    grab.target = T;
+  } else {
+    grab.target = sub(hit, grab.offset);
+  }
+  if (grab.kind === 'head') {
+    const dx = grab.cx - grab.sx, dy = grab.cy - grab.sy;
+    if (dy > 8 && dy > Math.abs(dx) * 0.7) {
+      grab.mode = 'squash';
+      grab.squash = clamp((dy - 8) / (grab.screenH * 0.85), 0, 0.7);
+    } else {
+      grab.mode = 'pull';
+      grab.squash = 0;
+    }
+  }
+  grab.hist.push({ t: now, p: hit });
+  if (grab.hist.length > 12) grab.hist.shift();
+}
+
+function grabVelocity(G, now) {
+  const h = G.hist;
+  while (h.length > 2 && now - h[0].t > 110) h.shift();
+  if (h.length < 2) return [0, 0, 0];
+  const a = h[0], b = h[h.length - 1];
+  const dt = (b.t - a.t) / 1000;
+  if (dt < 0.012 || now - b.t > 70) return [0, 0, 0];
+  return mul(sub(b.p, a.p), 1 / dt);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const hit = pick(e.clientX, e.clientY);
+  if (!hit) return;
+  e.preventDefault();
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  const { B, i, t, ray } = hit;
+  const hp = add(ray.o, mul(ray.d, t));
+  const kind = i === HEAD ? 'head' : (i === BELLY || i === CHEST ? 'body' : 'limb');
+  grab = {
+    B, i, kind, pointerId: e.pointerId,
+    sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY,
+    mode: 'pull', squash: 0, hist: [], pv: [0, 0, 0], target: null, lift: 0,
+  };
+  if (kind === 'body') {
+    grab.planeN = [0, 1, 0]; grab.P0 = hp; grab.offset = sub(hp, B.com); grab.lift = 0.5;
+  } else {
+    grab.planeN = mul(cam.fw, -1); grab.P0 = hp;
+    grab.offset = sub(hp, [B.wp[i * 3], B.wp[i * 3 + 1], B.wp[i * 3 + 2]]);
+  }
+  const top = add(B.base, [0, 1.25, 0]);
+  grab.screenH = Math.max(40, Math.abs(project(B.base)[1] - project(top)[1]));
+  lastTouched = B;
+  updateGrabTarget(performance.now());
+});
+
+function onMove(e) {
+  pointer.x = e.clientX; pointer.y = e.clientY; pointer.seen = true;
+  if (grab && e.pointerId === grab.pointerId) {
+    grab.cx = e.clientX; grab.cy = e.clientY;
+    updateGrabTarget(performance.now());
+  }
+}
+window.addEventListener('pointermove', onMove);
+
+function release(e) {
+  if (!grab || (e && e.pointerId !== grab.pointerId)) return;
+  const G = grab, B = G.B;
+  grab = null;
+  const v = B.v;
+  if (G.kind === 'head' && G.mode === 'squash' && G.squash > 0.06) {
+    // pancake → launch
+    const s = G.squash;
+    const lx = rand(-0.7, 0.7), lz = rand(-0.5, 0.3);
+    for (let i = 0; i < NN; i++) { v[i * 3] += lx; v[i * 3 + 1] += 3 + 12 * s; v[i * 3 + 2] += lz; }
+    B.syVel += 7 * s;
+    spin(B, rand(-1, 1) * 3 * s, rand(-1, 1) * 6 * s, rand(-1, 1) * 3 * s);
+    return;
+  }
+  if (G.kind === 'head') {
+    const hop = B.p[HEAD * 3 + 1] - B.g[HEAD * 3 + 1];
+    if (hop > 0.15) {
+      for (let i = 0; i < NN; i++) v[i * 3 + 1] += 2.2 + Math.min(hop, 1.6) * 4.6;
+      B.syVel += hop * 1.5;
+    }
+  }
+  // flick
+  const pv = grabVelocity(G, performance.now());
+  let sp = Math.hypot(pv[0], pv[1], pv[2]);
+  if (sp > 2.2) {
+    const k = Math.min(sp, 16) / sp;
+    const tv = mul(pv, k);
+    const gain = G.kind === 'body' ? 1 : 0.65;
+    for (let i = 0; i < NN; i++) {
+      for (let a = 0; a < 3; a++) v[i * 3 + a] += (tv[a] - B.vcom[a]) * gain;
+      v[i * 3 + 1] += 1.2 + 0.12 * Math.min(sp, 16);
+    }
+    const w = Math.min(sp, 16) * 0.45;
+    spin(B, tv[2] / Math.min(sp, 16) * w, rand(-1, 1) * w, -tv[0] / Math.min(sp, 16) * w);
+  }
+}
+window.addEventListener('pointerup', release);
+window.addEventListener('pointercancel', release);
+
+// =====================================================================
+//  UI
+// =====================================================================
+const pointer = { x: -100, y: -100, seen: false };
+const cursorEl = document.getElementById('cursor');
+const ringEl = cursorEl.querySelector('.ring');
+const flavorNameEl = document.getElementById('flavorName');
+const swatchesEl = document.getElementById('swatches');
+const wobbleEl = document.getElementById('wobble');
+const wobbleValEl = document.getElementById('wobbleVal');
+const stretchEl = document.getElementById('statStretch');
+const bouncesEl = document.getElementById('statBounces');
+
+FLAVORS.forEach((f, idx) => {
+  const b = document.createElement('button');
+  b.className = 'swatch';
+  b.style.setProperty('--c', f.css);
+  b.style.setProperty('--d', f.dark);
+  b.setAttribute('role', 'radio');
+  b.setAttribute('aria-label', f.name);
+  b.title = f.name;
+  b.addEventListener('click', () => selectFlavor(idx, true));
+  swatchesEl.appendChild(b);
+});
+function selectFlavor(idx, recolor) {
+  activeFlavor = idx;
+  [...swatchesEl.children].forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+    el.setAttribute('aria-checked', i === idx ? 'true' : 'false');
+  });
+  flavorNameEl.textContent = FLAVORS[idx].name;
+  document.documentElement.style.setProperty('--accent', FLAVORS[idx].css);
+  if (!recolor) return;
+  // re-flavor the bear you last touched, or the whole table if none yet
+  if (lastTouched && bears.includes(lastTouched) && !lastTouched.dying) setFlavor(lastTouched, idx);
+  else bears.forEach(B => setFlavor(B, idx));
+}
+selectFlavor(1, false);
+
+function setWobble(v) {
+  wobble = v / 100;
+  wobbleValEl.textContent = `${v}%`;
+  wobbleEl.style.setProperty('--fill', `${v}%`);
+}
+wobbleEl.addEventListener('input', () => setWobble(+wobbleEl.value));
+setWobble(80);
+
+document.getElementById('pour').addEventListener('click', () => {
+  queuePour(5, () => activeFlavor);
+});
+
+let shownBounces = -1, bumpTimer = 0;
+function bumpBounce() { bumpTimer = 0.14; }
+let stretchShown = 1, uiAccum = 0;
+function updateUI(dt) {
+  stretchShown += (stretchNow - stretchShown) * Math.min(1, dt * 10);
+  uiAccum += dt;
+  if (uiAccum > 0.06) {
+    uiAccum = 0;
+    stretchEl.textContent = `${Math.min(stretchShown, 9.99).toFixed(2)}×`;
+  }
+  if (bounces !== shownBounces) { bouncesEl.textContent = String(bounces); shownBounces = bounces; }
+  if (bumpTimer > 0) { bumpTimer -= dt; bouncesEl.classList.add('pop'); } else bouncesEl.classList.remove('pop');
+}
+
+function updateCursor() {
+  if (!pointer.seen) return;
+  cursorEl.classList.add('on');
+  cursorEl.style.transform = `translate3d(${pointer.x}px, ${pointer.y}px, 0)`;
+  const overUI = !grab && document.elementFromPoint(pointer.x, pointer.y)?.closest('.card');
+  let hover = false;
+  if (!grab && !overUI) hover = !!pick(pointer.x, pointer.y);
+  cursorEl.classList.toggle('grab', !!grab);
+  cursorEl.classList.toggle('hover', hover);
+  cursorEl.classList.toggle('ui', !!overUI);
+  if (grab) {
+    if (grab.mode === 'squash') {
+      ringEl.style.transform = `scale(${1 + grab.squash * 0.9}, ${1 - grab.squash * 0.6})`;
+    } else {
+      const dx = grab.cx - grab.sx, dy = grab.cy - grab.sy;
+      const amt = Math.min(Math.hypot(dx, dy) / 260, 0.7);
+      ringEl.style.transform = `rotate(${Math.atan2(dy, dx)}rad) scale(${1 + amt}, ${1 - amt * 0.4})`;
+    }
+  } else {
+    ringEl.style.transform = '';
+  }
+}
+document.addEventListener('pointerleave', () => cursorEl.classList.remove('on'));
+
+// =====================================================================
+//  Main loop
+// =====================================================================
+let last = performance.now(), acc = 0;
+let ftAvg = 16, ftCount = 0;
+
+function frame(now) {
+  let dt = (now - last) / 1000;
+  last = now;
+  if (dt > 0.1) dt = 0.1;
+
+  // adaptive resolution
+  ftAvg = lerp(ftAvg, dt * 1000, 0.05);
+  if (++ftCount > 45) {
+    if (ftAvg > 21 && renderScale > 0.5) { renderScale = Math.max(0.5, renderScale * 0.86); resize(); ftCount = 0; }
+    else if (ftAvg < 14 && renderScale < maxScale) { renderScale = Math.min(maxScale, renderScale * 1.07); resize(); ftCount = 0; }
+    else ftCount = 30;
+  }
+
+  processSpawns();
+  if (grab) {
+    if (!bears.includes(grab.B)) grab = null;
+    else {
+      const pv = grabVelocity(grab, now);
+      grab.pv = grab.pv.map((x, i) => lerp(x, pv[i], 0.35));
+    }
+  }
+
+  acc += dt;
+  let steps = 0;
+  while (acc >= H && steps < 24) { step(H); acc -= H; simTime += H; steps++; }
+  if (steps >= 24) acc = 0;
+
+  for (const B of bears) {
+    if (B.dying) B.alive -= dt / 0.4;
+    const k = 1 - Math.exp(-dt * 6);
+    for (let a = 0; a < 3; a++) B.col[a] = lerp(B.col[a], B.tcol[a], k);
+  }
+  bears = bears.filter(B => B.alive > 0);
+
+  const n = pack();
+  gl.bindBuffer(gl.UNIFORM_BUFFER, ubuf);
+  gl.bufferSubData(gl.UNIFORM_BUFFER, 0, ubo);
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform1i(U.uCount, n);
+  gl.uniform2f(U.uRes, canvas.width, canvas.height);
+  gl.uniform3fv(U.uCamPos, cam.pos);
+  gl.uniform3fv(U.uFw, cam.fw);
+  gl.uniform3fv(U.uRt, cam.rt);
+  gl.uniform3fv(U.uUp, cam.up);
+  gl.uniform1f(U.uFocal, cam.f);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  updateUI(dt);
+  updateCursor();
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('resize', resize);
+resize();
+
+// opening pour: one of each flavor
+const order = [1, 0, 2, 3, 4];
+queuePour(5, k => order[k], 0.25);
+
+// debug/test hook
+window.__gummy = {
+  get bears() { return bears; }, get bounces() { return bounces; }, get grab() { return grab; }, cam, bounds, project, pick,
+  simulate(sec) { for (let t = 0; t < sec; t += H) { processSpawns(); step(H); simTime += H; } },
+};
+
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
