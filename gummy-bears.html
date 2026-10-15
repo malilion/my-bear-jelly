@@ -202,26 +202,34 @@
     .hints { grid-template-columns: max-content; }
   }
   @media (max-width: 860px), (max-height: 560px) {
-    .masthead { top: 22px; left: 20px; max-width: 300px; }
-    h1 { font-size: 56px; margin: 12px 0 10px; }
+    .masthead { top: 20px; left: 20px; max-width: 300px; }
+    .eyebrow { font-size: 10px; }
+    h1 { font-size: 52px; margin: 10px 0 8px; }
     .lede { font-size: 12.5px; max-width: 280px; }
     .hints { display: none; }
     .card {
-      top: auto; bottom: 12px; right: 12px; left: 12px; transform: none; width: auto;
-      padding: 14px 14px 14px; border-radius: 20px;
-      display: grid; grid-template-columns: 1fr 1fr; column-gap: 16px;
+      top: auto; bottom: max(10px, env(safe-area-inset-bottom)); right: 10px; left: 10px; transform: none; width: auto;
+      padding: 12px 14px; border-radius: 20px;
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px;
     }
-    .card .flavor-block { grid-column: 1 / -1; }
-    .swatches { margin: 10px 0 12px; justify-content: flex-start; gap: 14px; }
-    .swatch { width: 32px; height: 32px; }
-    .slider { margin: 8px 0 12px; }
-    .stats { margin-bottom: 12px; }
-    .stat .num { font-size: 24px; }
-    .card .pour-block { grid-column: 1 / -1; }
+    .card .flavor-block, .card .wobble-block { grid-column: 1 / -1; }
+    .value-serif { font-size: 17px; }
+    .swatches { margin: 8px 0 8px; justify-content: flex-start; gap: 12px; }
+    .swatch { width: 28px; height: 28px; }
+    .slider { margin: 4px 0 10px; }
+    .stats { margin: 0; gap: 6px; }
+    .stat { padding: 7px 10px 6px; border-radius: 12px; }
+    .stat .label { font-size: 8.5px; }
+    .stat .num { font-size: 21px; margin-top: 3px; }
+    .pour-block { display: flex; }
+    .pour {
+      flex-direction: column; justify-content: center; gap: 4px; width: 92px; padding: 8px 10px;
+      font-size: 12px; line-height: 1.15; text-align: center; border-radius: 12px;
+    }
+    .pour .plus { padding: 2px 7px; font-size: 10.5px; }
   }
   @media (max-width: 420px) {
     .lede { display: none; }
-    .card { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -464,9 +472,9 @@ vec3 background(vec3 p, vec3 d) {
 }
 
 // ---------- Gelatin ----------
-float innerThick(int b, vec3 ro, vec3 rd) {
+float innerThick(int b, vec3 ro, vec3 rd, int steps) {
   float t = 0.0;
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < steps; i++) {
     float d = bearSDF(b, ro + rd * t);
     if (d > 0.0) break;
     t += max(-d * 0.95, 0.014);
@@ -503,13 +511,14 @@ vec3 shadeGummy(vec3 rd, vec3 p, vec3 n, int b) {
 
   float NdV = clamp(dot(n, -rd), 0.0, 1.0);
   float F = 0.04 + 0.96 * pow(1.0 - NdV, 5.0);
+  F *= mix(0.5, 1.0, smoothstep(0.0, 0.3, NdV));   // tame grazing sparkle on silhouettes
   vec3 R = reflect(rd, n);
-  vec3 refl = env(R);
+  vec3 refl = min(env(R), vec3(8.0));
 
   // Refraction through the body (Beer-Lambert)
   vec3 T = refract(rd, n, 1.0 / 1.45);
   p -= n * 0.012;                       // start just inside the gelatin
-  float th = innerThick(b, p, T) + 0.012;
+  float th = innerThick(b, p, T, 26) + 0.012;
   vec3 pe = p + T * th;
   vec3 ne = bearNormal(b, pe);
   vec3 To = refract(T, -ne, 1.45);
@@ -518,7 +527,7 @@ vec3 shadeGummy(vec3 rd, vec3 p, vec3 n, int b) {
 
   // Single scattering at mid-path: light that crossed the gelatin from the key softbox
   vec3 pm = p + T * th * 0.5;
-  float thl = innerThick(b, pm, LDIR);
+  float thl = innerThick(b, pm, LDIR, 12);
   vec3 scat = LCOL * exp(-sigma * (thl + th * 0.5)) * (1.0 - exp(-th * 1.6)) * 0.95;
   scat += col * col * 0.07 * (1.0 - exp(-th * 2.0));
   float wrap = clamp((dot(n, LDIR) + 0.5) / 1.5, 0.0, 1.0);
@@ -593,7 +602,7 @@ void main() {
   float t = tS;
   if (nc > 0) {
     tE = min(tE, tF + 0.01);
-    for (int i = 0; i < 128; i++) {
+    for (int i = 0; i < 100; i++) {
       int b; bool e;
       float d = mapScene(ro + rd * t, b, e);
       if (d < 0.0005 * t) { hit = true; hb = b; eyeHit = e; break; }
@@ -659,6 +668,7 @@ const MASS = NODES.map(n => n.m);
 const KB = NODES.map(n => n.kb);
 const M_TOTAL = MASS.reduce((a, b) => a + b, 0);
 const BONE = NODES.map((n, i) => n.parent < 0 ? [0, 0, 0] : REST[i].map((x, a) => x - REST[n.parent][a]));
+const IS_TOP = [0, 0, 1, 1, 1, 1, 0, 0, 0, 0];
 const NECK = [0.14, 0.32, 0, 0, 0, 0, 0.16, 0.16, 0, 0];         // torso follows a pulled head
 const KS = [1, 1, 1, 1.25, 1.25, 1.25, 0.8, 0.8, 1.1, 1.1];
 const DRAGW = [1.7, 1.7, 0.75, 0.4, 0.4, 0.4, 0.5, 0.5, 0.6, 0.6];
@@ -734,7 +744,8 @@ function makeBear(x, y, z, yaw, fl) {
     sy: 1, syVel: 0, anchor: 0, liftF: 0, upBias: 0,
     col: FLAVORS[fl].lin.slice(), tcol: FLAVORS[fl].lin.slice(), fl,
     alive: 1, dying: false, bounceCD: 0, air: 1,
-    com: [x, y, z], vcom: [0, 0, 0], base: [x, y, z], dh: [0, 0, 0],
+    com: [x, y, z], vcom: [0, 0, 0], base: [x, y, z], dh: [0, 0, 0], perch: [0, 0, 0], dragLift: false,
+    slipDir: rand(0, Math.PI * 2),
     wp: new Float32Array(NN * 3), wr: new Float32Array(NN), f: new Float32Array(NN).fill(1),
   };
   qToMat(B.q, B.R);
@@ -751,24 +762,38 @@ function makeBear(x, y, z, yaw, fl) {
 
 function setFlavor(B, fl) { B.fl = fl; B.tcol = FLAVORS[fl].lin.slice(); }
 
-function queuePour(n, flavorFn, delay = 0) {
-  const xs = [];
-  for (let k = 0; k < n; k++) {
-    const zc = rand(-1.3, 2.2);
-    const s = clamp((zc - bounds.zFar) / (bounds.zNear - bounds.zFar), 0, 1);
+function maxBears() { return W <= 860 || Hh <= 560 ? 12 : MAXB; }
+
+// pick the open spot on the table farthest from other bears (and queued drops)
+function freeSpot(taken) {
+  const zLo = bounds.zFar + 0.6, zHi = bounds.zNear - 0.6;
+  let best = null, bestD = -1;
+  for (let k = 0; k < 24; k++) {
+    const z = rand(zLo, zHi);
+    const s = clamp((z - bounds.zFar) / (bounds.zNear - bounds.zFar), 0, 1);
     const xl0 = lerp(bounds.xlf, bounds.xln, s), xr0 = lerp(bounds.xrf, bounds.xrn, s);
-    const xl = lerp(xl0, xr0, 0.3), xr = xr0 - 0.6;
-    let x = rand(xl, xr);
-    for (let tries = 0; tries < 8 && xs.some(o => Math.abs(o - x) < 0.8); tries++) x = rand(xl, xr);
-    xs.push(x);
-    spawnQueue.push({ at: simTime + delay + k * 0.14, x, z: zc, y: 4.6 + k * 0.35 + rand(0, 0.6), fl: flavorFn(k) });
+    const x = rand(lerp(xl0, xr0, W > 860 ? 0.28 : 0.08) + 0.5, xr0 - 0.5);
+    let d = 1e9;
+    for (const o of taken) d = Math.min(d, Math.hypot(o[0] - x, o[1] - z));
+    if (d > bestD) { bestD = d; best = [x, z]; }
+  }
+  return best;
+}
+
+function queuePour(n, flavorFn, delay = 0) {
+  const taken = bears.filter(b => !b.dying).map(b => [b.com[0], b.com[2]]);
+  for (const q of spawnQueue) taken.push([q.x, q.z]);
+  for (let k = 0; k < n; k++) {
+    const [x, z] = freeSpot(taken);
+    taken.push([x, z]);
+    spawnQueue.push({ at: simTime + delay + k * 0.16, x, z, y: 4.6 + k * 0.35 + rand(0, 0.6), fl: flavorFn(k) });
   }
 }
 
 function processSpawns() {
   spawnQueue.sort((a, b) => a.at - b.at);
   while (spawnQueue.length && spawnQueue[0].at <= simTime) {
-    if (bears.length >= MAXB) {
+    if (bears.length >= maxBears()) {
       if (!bears.some(b => b.dying)) {
         const victim = bears.find(b => !b.dying && !(grab && grab.B === b));
         if (victim) victim.dying = true;
@@ -776,7 +801,7 @@ function processSpawns() {
       return;                                         // wait for a free slot
     }
     const s = spawnQueue.shift();
-    bears.push(makeBear(s.x, s.y, s.z, rand(-0.45, 0.45), s.fl));
+    bears.push(makeBear(s.x, s.y, s.z, rand(-0.75, 0.75), s.fl));
   }
 }
 
@@ -789,7 +814,7 @@ function zetaFromWobble() { return lerp(0.9, 0.065, wobble); }
 function step(h) {
   const n = bears.length;
   const zeta = zetaFromWobble();
-  for (const B of bears) B.a.fill(0);
+  for (const B of bears) { B.a.fill(0); B.perch[0] = B.perch[1] = B.perch[2] = 0; }
 
   // soft bear-to-bear contact
   const KC = 2400, CC = 5;
@@ -815,6 +840,8 @@ function step(h) {
           if (f <= 0) continue;
           A.a[i * 3] += nx * f; A.a[i * 3 + 1] += ny * f; A.a[i * 3 + 2] += nz * f;
           Bb.a[j * 3] -= nx * f; Bb.a[j * 3 + 1] -= ny * f; Bb.a[j * 3 + 2] -= nz * f;
+          if (ny > 0.35) { A.perch[0] += dx; A.perch[1] += dz; A.perch[2]++; }
+          else if (ny < -0.35) { Bb.perch[0] -= dx; Bb.perch[1] -= dz; Bb.perch[2]++; }
         }
       }
     }
@@ -894,7 +921,7 @@ function step(h) {
       const gy = (R[1] * qx + R[4] * qy + R[7] * qz) * sy;
       anchorY += (p[I + 1] - gy) * MASS[i]; anchorM += MASS[i];
     }
-    const lifting = G && (G.kind === 'body' || B.liftF > M_TOTAL * GRAV * 1.05);
+    const lifting = G && (G.kind === 'body' || B.dragLift || B.liftF > M_TOTAL * GRAV * 1.05);
     const anchorTarget = anchorM > 0 && !lifting ? 1 : 0;
     B.anchor = lerp(B.anchor, anchorTarget, 1 - Math.exp(-h * (anchorTarget ? 40 : 12)));
     const ty = anchorM > 0 ? lerp(cy, anchorY / anchorM, B.anchor) : cy;
@@ -943,7 +970,19 @@ function step(h) {
       if (i === ex) B.liftF = Math.max(0, F * ny);
     }
 
+    // --- a gummy perched on another gummy can't balance: it slides and tips off
+    if (B.perch[2] > 0 && !G) {
+      let sx2 = B.perch[0], sz2 = B.perch[1];
+      const l = Math.hypot(sx2, sz2);
+      if (l < 0.05) { sx2 = Math.cos(B.slipDir); sz2 = Math.sin(B.slipDir); } else { sx2 /= l; sz2 /= l; }
+      for (let i = 0; i < NN; i++) {
+        const w = i === HEAD || IS_TOP[i] ? 12 : 5;           // top-heavy push → it topples
+        acc[i * 3] += sx2 * w; acc[i * 3 + 2] += sz2 * w;
+      }
+    }
+
     // --- interaction
+    B.dragLift = false;
     if (G) {
       const T = G.target, pv = G.pv;
       if (G.kind === 'body') {
@@ -954,10 +993,22 @@ function step(h) {
         }
       } else if (G.mode === 'pull') {
         const J = G.i * 3, P = PARENT[G.i] * 3;
-        // keep the taffy from being pulled further than ~2.4 units from its joint
+        // gelatin only stretches so far: past that the pull drags (or lifts) the whole bear
         let tx = T[0], ty2 = T[1], tz = T[2];
         const ddx = tx - p[P], ddy = ty2 - p[P + 1], ddz = tz - p[P + 2], dl = Math.hypot(ddx, ddy, ddz);
-        if (dl > 2.4) { const f = 2.4 / dl; tx = p[P] + ddx * f; ty2 = p[P + 1] + ddy * f; tz = p[P + 2] + ddz * f; }
+        const lmax = G.i === HEAD ? 1.0 : 1.1;
+        if (dl > lmax) {
+          const f = lmax / dl;
+          tx = p[P] + ddx * f; ty2 = p[P + 1] + ddy * f; tz = p[P + 2] + ddz * f;
+          const e = 1 - f, exx = ddx * e, eyy = ddy * e, ezz = ddz * e;
+          for (let i = 0; i < NN; i++) {
+            if (i === G.i) continue;
+            acc[i * 3] += 70 * exx - 4 * (v[i * 3] - pv[0]);
+            acc[i * 3 + 1] += 70 * eyy - 4 * (v[i * 3 + 1] - pv[1]);
+            acc[i * 3 + 2] += 70 * ezz - 4 * (v[i * 3 + 2] - pv[2]);
+          }
+          if (eyy > 0.12) B.dragLift = true;
+        }
         acc[J] = 900 * (tx - p[J]) - 55 * (v[J] - pv[0]);
         acc[J + 1] = 900 * (ty2 - p[J + 1]) - 55 * (v[J + 1] - pv[1]);
         acc[J + 2] = 900 * (tz - p[J + 2]) - 55 * (v[J + 2] - pv[2]);
@@ -1054,7 +1105,7 @@ function pack() {
       const P = PARENT[i] * 3, I = i * 3;
       const L = Math.hypot(p[I] - p[P], p[I + 1] - p[P + 1], p[I + 2] - p[P + 2]);
       const s = L / Math.max(B.L0[i], 1e-3);
-      B.f[i] = clamp(1 / Math.sqrt(Math.max(s, 1e-3)), 0.3, 1.12);
+      B.f[i] = clamp(1 / Math.sqrt(Math.max(s, 1e-3)), 0.45, 1.12);
       stretchNow = Math.max(stretchNow, s);
     }
     stretchNow = Math.max(stretchNow, sy > 1 ? sy : 1 / sy);
@@ -1147,7 +1198,8 @@ gl.bindVertexArray(gl.createVertexArray());
 const U = {};
 for (const name of ['uCount', 'uRes', 'uCamPos', 'uFw', 'uRt', 'uUp', 'uFocal']) U[name] = gl.getUniformLocation(prog, name);
 
-let renderScale = Math.min(window.devicePixelRatio || 1, 1.25);
+let renderScale = Math.min(window.devicePixelRatio || 1, 1.5);
+const minScale = Math.min(window.devicePixelRatio || 1, 0.8);
 const maxScale = Math.min(window.devicePixelRatio || 1, 2);
 let W = innerWidth, Hh = innerHeight;
 
@@ -1202,7 +1254,8 @@ function computeBounds() {
   const y0 = 0.6;
   const wide = W > 860 && Hh > 560;
   const leftPx = 18, rightPx = wide ? W - 340 : W - 18;
-  const botPx = wide ? Hh - 24 : Hh - (W <= 420 ? 330 : 250);
+  const cardTop = document.querySelector('.card').getBoundingClientRect().top;
+  const botPx = wide ? Hh - 24 : Math.min(Hh - 24, cardTop - 6);
   const topPx = wide ? Hh * 0.2 : Hh * 0.28;
   const at = (px, py) => {
     const r = rayFrom(px, py);
@@ -1403,9 +1456,10 @@ function selectFlavor(idx, recolor) {
   flavorNameEl.textContent = FLAVORS[idx].name;
   document.documentElement.style.setProperty('--accent', FLAVORS[idx].css);
   if (!recolor) return;
-  // re-flavor the bear you last touched, or the whole table if none yet
+  // re-flavor the bear you last touched
   if (lastTouched && bears.includes(lastTouched) && !lastTouched.dying) setFlavor(lastTouched, idx);
-  else bears.forEach(B => setFlavor(B, idx));
+  // otherwise the bear nearest the front of the table
+  else if (bears.length) setFlavor(bears.reduce((a, b) => (b.com[2] > a.com[2] ? b : a)), idx);
 }
 selectFlavor(1, false);
 
@@ -1418,7 +1472,9 @@ wobbleEl.addEventListener('input', () => setWobble(+wobbleEl.value));
 setWobble(80);
 
 document.getElementById('pour').addEventListener('click', () => {
-  queuePour(5, () => activeFlavor);
+  // a handful in the chosen flavor, mixed with a few others, like a real bag
+  const others = FLAVORS.map((_, i) => i).filter(i => i !== activeFlavor);
+  queuePour(5, k => (k % 2 === 0 ? activeFlavor : others[Math.floor(Math.random() * others.length)]));
 });
 
 let shownBounces = -1, bumpTimer = 0;
@@ -1473,7 +1529,7 @@ function frame(now) {
   // adaptive resolution
   ftAvg = lerp(ftAvg, dt * 1000, 0.05);
   if (++ftCount > 45) {
-    if (ftAvg > 21 && renderScale > 0.5) { renderScale = Math.max(0.5, renderScale * 0.86); resize(); ftCount = 0; }
+    if (ftAvg > 21 && renderScale > minScale) { renderScale = Math.max(minScale, renderScale * 0.88); resize(); ftCount = 0; }
     else if (ftAvg < 14 && renderScale < maxScale) { renderScale = Math.min(maxScale, renderScale * 1.07); resize(); ftCount = 0; }
     else ftCount = 30;
   }

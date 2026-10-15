@@ -53,9 +53,9 @@ Then open <http://localhost:8000/>.
 | **Drag the head down** | Squash the bear into a pancake; release to launch it |
 | **Drag the belly / chest** | Pick the whole bear up and carry it |
 | **Release while moving** | Flick: the bear is thrown with the pointer's momentum |
-| Click a **flavor** swatch | Recolor the last bear you touched (or every bear, if you haven't touched one yet); new pours use this flavor |
+| Click a **flavor** swatch | Recolor the last bear you touched (or the front-most bear, if you haven't touched one yet). New pours favor this flavor, mixed with a few others like a real bag |
 | **Wobble** slider | 0% is firm and quickly damped; 100% is very jiggly |
-| **Pour more bears** | Drop 5 new bears from above (up to 20; the oldest fade out) |
+| **Pour more bears** | Drop 5 new bears into open spots on the table (up to 20 on desktop and 12 on phones; the oldest fade out) |
 
 Mouse, touch and pen all work. On desktop the pointer is a thin ring with a centre dot that shrinks when you grab, squashes while you press, and stretches in the direction you pull.
 
@@ -63,7 +63,7 @@ Mouse, touch and pen all work. On desktop the pointer is a thin ring with a cent
 
 The bears follow four interactions, listed at the bottom left of the page:
 
-1. **Pull limb / ear: stretch & wobble.** The pulled part stretches into a gelatin bridge that thins as it lengthens. The pull travels through the bear's springs, so it leans toward you. Let go and the part snaps back like a rubber band, and the recoil sets the whole bear wobbling.
+1. **Pull limb / ear: stretch & wobble.** The pulled part stretches into a gelatin bridge that thins as it lengthens. Past a natural taffy length, the pull drags the whole bear, or lifts it so it dangles. The pull travels through the bear's springs, so it leans toward you. Let go and the part snaps back like a rubber band, and the recoil sets the whole bear wobbling.
 2. **Pull head up: neck stretch & hop.** The chest and belly are drawn up with the head and the neck elongates. On release the bear springs into a hop.
 3. **Press head down: pancake & launch.** All nodes spread outward and flatten into a wide pancake (volume is preserved), storing elastic energy. On release the bear launches high into the air, spinning.
 4. **Flick: throw & scatter.** Release any part mid-motion to throw the bear. It bounces several times with a squash on each landing, rebounds off the walls, and bumps softly into other bears.
@@ -73,7 +73,7 @@ The card on the right shows two live numbers:
 - **STRETCH:** the current largest stretch ratio on the table.
 - **BOUNCES:** how many landings have happened so far.
 
-A bear that topples over slowly rights itself back onto its feet.
+A bear that topples over slowly rights itself back onto its feet. A bear that lands on another bear can't balance there: it slides and tips off.
 
 ## Rendering
 
