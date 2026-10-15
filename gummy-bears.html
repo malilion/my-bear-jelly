@@ -792,7 +792,7 @@ function step(h) {
   for (const B of bears) B.a.fill(0);
 
   // soft bear-to-bear contact
-  const KC = 1500, CC = 14;
+  const KC = 2400, CC = 5;
   for (let ia = 0; ia < n; ia++) {
     const A = bears[ia];
     if (A.dying) continue;
@@ -965,7 +965,8 @@ function step(h) {
     }
 
     // --- integrate + collide with the table and walls
-    let grounded = false;
+    let grounded = false, impact = 0;
+    const vcy0 = B.vcom[1];
     for (let i = 0; i < NN; i++) {
       const I = i * 3, r = RAD[i] * B.f[i], ry = r * sy;
       v[I] += acc[I] * h; v[I + 1] += acc[I + 1] * h; v[I + 2] += acc[I + 2] * h;
@@ -974,12 +975,8 @@ function step(h) {
       if (p[I + 1] < ry) {
         p[I + 1] = ry;
         if (v[I + 1] < 0) {
-          if (v[I + 1] < -3.2 && B.bounceCD <= 0 && B.air > 0.1) {
-            bounces++; bumpBounce();
-            B.bounceCD = 0.22;
-            B.syVel -= Math.min(-v[I + 1] * 0.5, 5.5);
-          }
-          v[I + 1] = -v[I + 1] * 0.3;
+          impact = Math.min(impact, v[I + 1]);
+          v[I + 1] = -v[I + 1] * 0.45;
         }
         const fr = Math.exp(-h * 5.5);
         v[I] *= fr; v[I + 2] *= fr;
@@ -987,12 +984,25 @@ function step(h) {
       }
       const rx = r * sx;
       const zmin = bounds.zFar + rx, zmax = bounds.zNear - rx;
-      if (p[I + 2] < zmin) { p[I + 2] = zmin; if (v[I + 2] < 0) v[I + 2] *= -0.45; }
-      if (p[I + 2] > zmax) { p[I + 2] = zmax; if (v[I + 2] > 0) v[I + 2] *= -0.45; }
+      if (p[I + 2] < zmin) { p[I + 2] = zmin; if (v[I + 2] < 0) v[I + 2] *= -0.72; }
+      if (p[I + 2] > zmax) { p[I + 2] = zmax; if (v[I + 2] > 0) v[I + 2] *= -0.72; }
       const t = clamp((p[I + 2] - bounds.zFar) / (bounds.zNear - bounds.zFar), 0, 1);
       const xmin = lerp(bounds.xlf, bounds.xln, t) + rx, xmax = lerp(bounds.xrf, bounds.xrn, t) - rx;
-      if (p[I] < xmin) { p[I] = xmin; if (v[I] < 0) v[I] *= -0.45; }
-      if (p[I] > xmax) { p[I] = xmax; if (v[I] > 0) v[I] *= -0.45; }
+      if (p[I] < xmin) { p[I] = xmin; if (v[I] < 0) v[I] *= -0.72; }
+      if (p[I] > xmax) { p[I] = xmax; if (v[I] > 0) v[I] *= -0.72; }
+    }
+    // a landing gummy squashes, then springs the whole body back up (rubber bounce)
+    if (impact < -2.6 && B.bounceCD <= 0 && B.air > 0.08 && !G) {
+      bounces++; bumpBounce();
+      B.bounceCD = 0.2;
+      B.syVel -= Math.min(-impact * 0.65, 7.5);
+      const fall = Math.max(-vcy0, -impact * 0.8);
+      const up = fall > 2.4 ? fall * 0.62 : 0;
+      for (let i = 0; i < NN; i++) {
+        v[i * 3 + 1] = up + (v[i * 3 + 1] - vcy0) * 0.35;
+        v[i * 3] *= 0.9; v[i * 3 + 2] *= 0.9;
+      }
+      if (up > 0) spin(B, rand(-1, 1) * up * 0.25, rand(-1, 1) * up * 0.35, rand(-1, 1) * up * 0.25);
     }
     B.air = grounded ? 0 : B.air + h;
     B.bounceCD -= h;
@@ -1317,6 +1327,23 @@ function release(e) {
     B.syVel += 7 * s;
     spin(B, rand(-1, 1) * 3 * s, rand(-1, 1) * 6 * s, rand(-1, 1) * 3 * s);
     return;
+  }
+  if (G.kind === 'limb' || (G.kind === 'head' && G.mode === 'pull')) {
+    // rubber-band snap: the stretched part whips back, its recoil yanks the body
+    const J = G.i * 3, P = PARENT[G.i] * 3;
+    const dx = B.p[J] - B.p[P], dy = B.p[J + 1] - B.p[P + 1], dz = B.p[J + 2] - B.p[P + 2];
+    const L = Math.hypot(dx, dy, dz) || 1, x = L - B.L0[G.i];
+    if (x > 0.06) {
+      const nx = dx / L, ny = dy / L, nz = dz / L;
+      const snap = Math.min(x * 16, 18), kick = Math.min(x, 1.8) * 3.2;
+      v[J] -= nx * snap; v[J + 1] -= ny * snap; v[J + 2] -= nz * snap;
+      for (let i = 0; i < NN; i++) {
+        if (i === G.i) continue;
+        v[i * 3] += nx * kick; v[i * 3 + 1] += Math.max(ny, 0.5) * kick + 1.6 * Math.min(x, 1); v[i * 3 + 2] += nz * kick;
+      }
+      B.syVel += Math.min(x, 1.5) * 2.5;
+      spin(B, nz * kick * 0.8, rand(-1, 1) * kick * 0.5, -nx * kick * 0.8);
+    }
   }
   if (G.kind === 'head') {
     const hop = B.p[HEAD * 3 + 1] - B.g[HEAD * 3 + 1];
